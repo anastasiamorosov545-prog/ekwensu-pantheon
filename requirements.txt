@@ -2,6 +2,7 @@ flask
 flask-cors
 requests
 chromadb
+ddgs
 duckduckgo-search
 PyPDF2
 gunicorn
