@@ -183,13 +183,16 @@ class EkwensuPantheon:
         else:
             message_content = final_prompt
 
-        MAX_RETRIES = 2 
+        # ELITE FIX: THE RENDER 100-SECOND GUILLOTINE BYPASS
+        # We must return a response in under 85 seconds total to survive the cloud firewall.
+        MAX_RETRIES = 1 # Only 2 total cycles
         cycle = 0 
         while cycle <= MAX_RETRIES:
             for model in active_waterfall:
                 data = {"model": model, "messages": [{"role": "system", "content": self.get_system_prompt()}, {"role": "user", "content": message_content}]}
                 try:
-                    response = self.session.post(self.endpoint, headers=headers, json=data, timeout=35)
+                    # Dropped timeout from 35s to 15s to force lightning-fast responses or instant reroutes
+                    response = self.session.post(self.endpoint, headers=headers, json=data, timeout=15)
                     if response.status_code == 200:
                         return response.json()['choices'][0]['message']['content']
                     elif response.status_code == 400:
@@ -200,9 +203,9 @@ class EkwensuPantheon:
             
             cycle += 1
             if cycle > MAX_RETRIES: break 
-            time.sleep(2.0)
+            time.sleep(1.0) # Minimal wait to prevent loop lag
 
-        return "[FATAL ERROR] OPENROUTER QUOTA EXHAUSTED OR API BLOCKED. Please wait a few minutes."
+        return "[FATAL ERROR] OPENROUTER IS CONGESTED. The Cloud Firewall intervened to prevent a crash. Please wait 60 seconds and try again."
 
 
 # --- FLASK SERVER (CLOUD DEPLOYMENT MODE) ---
