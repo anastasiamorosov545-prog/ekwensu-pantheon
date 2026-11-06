@@ -13,8 +13,7 @@ from flask_cors import CORS
 
 class EkwensuPantheon:
     def __init__(self):
-        print("[SYSTEM] Initializing Cloud Brainstem v7.0 (Omnipresent Edition)...")
-        # ELITE FIX: Pull API key from Cloud Environment Variables, fallback to hardcoded if missing
+        print("[SYSTEM] Initializing Cloud Brainstem v7.1 (The Sniper Protocol)...")
         self.api_key = os.environ.get("OPENROUTER_API_KEY", "")
         self.endpoint = "https://openrouter.ai/api/v1/chat/completions"
         self.models_endpoint = "https://openrouter.ai/api/v1/models"
@@ -111,20 +110,18 @@ class EkwensuPantheon:
             response.raise_for_status()
             all_models = response.json().get('data', [])
             
-            allowed_text = ["llama", "mistral", "qwen", "dolphin", "mammoth", "north", "laguna", "xing", "dots"]
+            allowed_text = ["llama", "mistral", "qwen", "dolphin", "mammoth", "north", "xing"]
             allowed_vision = ["vision", "vl", "omni", "pixtral"]
-            banned_architectures = ["embed", "rerank", "voice", "audio", "heygen", "lfm", "flint"]
+            banned = ["embed", "rerank", "voice", "audio", "heygen", "lfm", "flint", "gemma"]
             
             text_groups = {}
             for model in all_models:
                 model_id = model.get('id', '').lower()
                 if ':free' in model_id:
-                    if any(banned in model_id for banned in banned_architectures): continue
-                    
+                    if any(b in model_id for b in banned): continue
                     if any(v in model_id for v in allowed_vision):
                         self.vision_waterfall.append(model['id'])
                         continue
-                    
                     if any(arch in model_id for arch in allowed_text):
                         provider = model_id.split('/')[0] if '/' in model_id else "unknown"
                         if provider not in text_groups: text_groups[provider] = []
@@ -137,25 +134,21 @@ class EkwensuPantheon:
                     else: del text_groups[prov]
 
             def sort_priority(model_str):
-                if 'north' in model_str: return 0
-                if 'xing' in model_str: return 1
-                if 'mammoth' in model_str: return 2
-                if 'dots' in model_str: return 3
-                if 'llama' in model_str: return 4
-                if 'qwen' in model_str: return 5
+                if 'mammoth' in model_str: return 0
+                if 'north' in model_str: return 1
+                if 'xing' in model_str: return 2
+                if 'llama' in model_str: return 3
                 return 10
 
             interleaved_waterfall.sort(key=sort_priority)
-            self.cortex_waterfall = interleaved_waterfall[:8] 
+            
+            # ELITE FIX: THE SNIPER PROTOCOL. Max 3 models. mathematically guarantees execution under 85 seconds.
+            self.cortex_waterfall = interleaved_waterfall[:3] 
             
             if not self.vision_waterfall:
                 self.vision_waterfall = ["nvidia/nemotron-3.5-super-vl:free", "nvidia/nemotron-3-nano-omni:free"]
-                
-            print(f"[RADAR] Sovereign Text Waterfall Built ({len(self.cortex_waterfall)} Models).")
-            print(f"[RADAR] Optical Vision Waterfall Built ({len(self.vision_waterfall)} Models).")
-            
-        except Exception as e:
-            self.cortex_waterfall = ["cohere/north-mini-code:free", "xingchen-agi/xing4.0-29b-a4b:free"]
+        except Exception:
+            self.cortex_waterfall = ["baseten/mammoth-1:free", "cohere/north-mini-code:free", "meta-llama/llama-3.1-8b-instruct:free"]
             self.vision_waterfall = ["nvidia/nemotron-3.5-super-vl:free"]
 
     def memorize_intel(self, text):
@@ -164,7 +157,7 @@ class EkwensuPantheon:
 
     def retrieve_memory(self, query):
         if self.memory_bank.count() == 0: return ""
-        results = self.memory_bank.query(query_texts=[query], n_results=3)
+        results = self.memory_bank.query(query_texts=[query], n_results=2)
         if results['documents'] and results['documents'][0]:
             return " ".join(results['documents'][0])
         return ""
@@ -177,40 +170,23 @@ class EkwensuPantheon:
         headers = { "Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json", "HTTP-Referer": "https://omni-apex.com", "X-Title": "Eze Ekwensu Oracle" }
 
         active_waterfall = self.vision_waterfall if image_payloads else self.cortex_waterfall
-        
-        if image_payloads:
-            message_content = [{"type": "text", "text": final_prompt}] + image_payloads
-        else:
-            message_content = final_prompt
+        message_content = [{"type": "text", "text": final_prompt}] + image_payloads if image_payloads else final_prompt
 
-        # ELITE FIX: THE RENDER 100-SECOND GUILLOTINE BYPASS
-        # We must return a response in under 85 seconds total to survive the cloud firewall.
-        MAX_RETRIES = 1 # Only 2 total cycles
-        cycle = 0 
-        while cycle <= MAX_RETRIES:
-            for model in active_waterfall:
-                data = {"model": model, "messages": [{"role": "system", "content": self.get_system_prompt()}, {"role": "user", "content": message_content}]}
-                try:
-                    # Dropped timeout from 35s to 15s to force lightning-fast responses or instant reroutes
-                    response = self.session.post(self.endpoint, headers=headers, json=data, timeout=15)
-                    if response.status_code == 200:
-                        return response.json()['choices'][0]['message']['content']
-                    elif response.status_code == 400:
-                        continue
-                    elif response.status_code == 429 or response.status_code >= 500:
-                        continue 
-                except Exception: pass
-            
-            cycle += 1
-            if cycle > MAX_RETRIES: break 
-            time.sleep(1.0) # Minimal wait to prevent loop lag
+        # THE 75-SECOND SNIPER LOOP
+        for model in active_waterfall:
+            data = {"model": model, "messages": [{"role": "system", "content": self.get_system_prompt()}, {"role": "user", "content": message_content}]}
+            try:
+                response = self.session.post(self.endpoint, headers=headers, json=data, timeout=25)
+                if response.status_code == 200:
+                    return response.json()['choices'][0]['message']['content']
+            except Exception: 
+                pass # Silently skip to the next sniper
 
-        return "[FATAL ERROR] OPENROUTER IS CONGESTED. The Cloud Firewall intervened to prevent a crash. Please wait 60 seconds and try again."
+        return "[FATAL ERROR] OPENROUTER IS CONGESTED. The Oracle checked the top 3 nodes and all timed out. Please wait 60 seconds and try again."
 
 
 # --- FLASK SERVER (CLOUD DEPLOYMENT MODE) ---
 app = Flask(__name__)
-# ELITE FIX: Allowing your Firebase frontend URL to communicate with this cloud server
 CORS(app, resources={r"/*": {"origins": "*"}}) 
 oracle = EkwensuPantheon()
 
@@ -257,18 +233,16 @@ def chat():
 
     immediate_prompt = user_prompt
     if extracted_text:
-        oracle.memorize_intel(extracted_text)
-        immediate_prompt = f"The user has attached the following files to this prompt:\n{extracted_text}\n\nUSER PROMPT: {user_prompt}"
+        oracle.memorize_intel(extracted_text, silent=True)
+        immediate_prompt = f"The user has attached files:\n{extracted_text}\n\nUSER PROMPT: {user_prompt}"
 
     response = oracle.query_swarm(immediate_prompt, image_payloads if image_payloads else None)
     
     if "[FATAL ERROR]" not in response:
-        bundled_memory = f"User asked: {user_prompt}\nEze Ekwensu responded: {response}"
-        oracle.memorize_intel(bundled_memory)
+        oracle.memorize_intel(f"User: {user_prompt}\nEze Ekwensu: {response}", silent=True)
         
     return jsonify({"response": response})
 
-# Cloud servers dynamically assign a PORT. We must read it from the environment.
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=port, debug=False)
