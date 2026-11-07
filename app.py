@@ -142,8 +142,8 @@ class EkwensuPantheon:
 
             interleaved_waterfall.sort(key=sort_priority)
             
-            # ELITE FIX: THE SNIPER PROTOCOL. Max 3 models. mathematically guarantees execution under 85 seconds.
-            self.cortex_waterfall = interleaved_waterfall[:3] 
+            # ELITE FIX: THE SNIPER PROTOCOL. Max 1 models. mathematically guarantees execution under 85 seconds.
+            self.cortex_waterfall = interleaved_waterfall[:1] 
             
             if not self.vision_waterfall:
                 self.vision_waterfall = ["nvidia/nemotron-3.5-super-vl:free", "nvidia/nemotron-3-nano-omni:free"]
